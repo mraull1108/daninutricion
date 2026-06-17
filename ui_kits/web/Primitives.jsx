@@ -6,7 +6,7 @@ const lightTokens = {
   brand500:'#10b981', brand600:'#059669', brand700:'#047857', brand800:'#065f46', brand900:'#064e3b',
   brand50:'#ecfdf5', brand100:'#d1fae5', brand200:'#a7f3d0',
   // Neutrals — warm off-white app bg to match preview cards
-  bgApp:'#f6f7f5', surface:'#fff', surfaceAlt:'#fafbf9', inputBg:'#fafafa', borderSoft:'#e7e8e4', borderDash:'#eceeea',
+  bgApp:'#edefe7', surface:'#fbfbf6', surfaceAlt:'#f4f5ee', inputBg:'#f1f2ea', borderSoft:'#e2e4db', borderDash:'#e8eae1',
   slate50:'#f8fafc', slate100:'#f1f5f9', slate200:'#e2e8f0', slate300:'#cbd5e1',
   slate400:'#94a3b8', slate500:'#64748b', slate600:'#475569', slate700:'#334155',
   slate900:'#0f172a',
@@ -80,6 +80,8 @@ function Icon({ name, size=16, color='currentColor', strokeWidth=1.9 }) {
     grip:<><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></>,
     minimize:<><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></>,
     maximize:<><path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3"/></>,
+    popout:<><path d="M14 4h6v6"/><path d="M21 3l-9 9"/><path d="M19 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h4"/></>,
+    pin:<><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
@@ -290,9 +292,28 @@ function MacroBar({ label, sub, current, target, unit, color }) {
   );
 }
 
+// Discreet "pop this card out into a floating panel" button — lives top-right of a card
+function PopOut({ onClick, title='Sacar a flote · mantener visible' }) {
+  const [h,setH]=React.useState(false);
+  return (
+    <button onClick={onClick} title={title}
+      onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+      style={{
+        width:26,height:26,borderRadius:7,cursor:'pointer',
+        display:'inline-flex',alignItems:'center',justifyContent:'center',
+        border:`1px solid ${h?tokens.brand200:'transparent'}`,
+        background:h?tokens.brand50:'transparent',
+        color:h?tokens.brand700:tokens.slate400,
+        opacity:h?1:.5,transition:'all .14s',flexShrink:0,
+      }}>
+      <Icon name="popout" size={13} strokeWidth={1.9}/>
+    </button>
+  );
+}
+
 function setTheme(t){
   tokens = t==='dark' ? darkTokens : lightTokens;
   window.tokens = tokens;
 }
 window.tokens = tokens;
-Object.assign(window, { tokens, Icon, Logo, Button, Input, Label, Badge, Card, CardHeader, CardContent, Eyebrow, StatRow, MacroBar, setTheme });
+Object.assign(window, { tokens, Icon, Logo, Button, Input, Label, Badge, Card, CardHeader, CardContent, Eyebrow, StatRow, MacroBar, PopOut, setTheme });

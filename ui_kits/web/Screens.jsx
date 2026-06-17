@@ -1,7 +1,7 @@
 // Screens: Ficha (patient form) + Plan nutricional — fully editable
 
-function PatientForm({ client, onUpdate }) {
-  const { tokens, Icon, Card, CardHeader, CardContent, Input, Label, Eyebrow, Button, Badge } = window;
+function PatientForm({ client, onUpdate, onFloat }) {
+  const { tokens, Icon, Card, CardHeader, CardContent, Input, Label, Eyebrow, Button, Badge, PopOut } = window;
   const set = patch => onUpdate(patch);
   const setNumber = (k,v) => set({ [k]: v===''?'':+v });
 
@@ -29,7 +29,6 @@ function PatientForm({ client, onUpdate }) {
       {/* Page title */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingBottom:14,borderBottom:`1px solid ${tokens.borderSoft}`,gap:16}}>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:tokens.fontMono,fontSize:10.5,textTransform:'uppercase',letterSpacing:'.14em',color:tokens.slate500,fontWeight:600}}>Ficha · R{String(client.id).padStart(2,'0')}</div>
           <input value={client.full_name} onChange={e=>set({full_name:e.target.value})}
             style={{fontFamily:tokens.fontSerif,fontSize:34,fontWeight:500,letterSpacing:'-.02em',margin:'4px 0 0',
               color:tokens.slate900,lineHeight:1.05,background:'transparent',border:'1px solid transparent',
@@ -78,70 +77,94 @@ function PatientForm({ client, onUpdate }) {
       {/* Form grid */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
         <Card>
-          <CardHeader icon="user" title="Datos personales" description="Identificación del asesorado"/>
-          <CardContent>
-            <div style={{marginBottom:12}}>
-              <Label hint="editable">Nombre completo</Label>
-              <Input value={client.full_name} onChange={e=>set({full_name:e.target.value})}/>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div>
-                <Label hint="dd/mm/aaaa">Fecha de nacimiento</Label>
-                <Input type="date" value={client.birth_date||''} onChange={e=>set({birth_date:e.target.value})}/>
-              </div>
-              <div><Label hint="M · F">Sexo</Label>
-                <div style={{display:'inline-flex',background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:8,padding:2,height:36,boxSizing:'border-box'}}>
-                  {[{k:'M',l:'Masculino'},{k:'F',l:'Femenino'}].map(o=>(
-                    <button key={o.k} onClick={()=>set({sex:o.k})} style={{
-                      border:0,background:client.sex===o.k?tokens.brand600:'transparent',
-                      color:client.sex===o.k?'#fff':tokens.slate500,
-                      fontSize:13,fontWeight:client.sex===o.k?500:400,padding:'0 14px',borderRadius:6,cursor:'pointer',fontFamily:tokens.fontSans
-                    }}>{o.l}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div style={{marginTop:12}}>
-              <Label hint="objetivo">Objetivo del asesorado</Label>
-              <Input value={client.objective||''} onChange={e=>set({objective:e.target.value})} placeholder="Ej.: Pérdida de grasa"/>
-            </div>
-          </CardContent>
+          <CardHeader icon="user" title="Datos personales" description="Identificación del asesorado" right={<PopOut onClick={()=>onFloat&&onFloat('datos')}/>}/>
+          <CardContent><DatosPersonalesBody client={client} onUpdate={onUpdate}/></CardContent>
         </Card>
         <Card>
-          <CardHeader icon="ruler" title="Antropometría" description="Medidas base · usadas en cálculos"/>
-          <CardContent>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div><Label hint="cm">Altura</Label>
-                <Input type="number" unit="cm" value={client.height} onChange={e=>setNumber('height',e.target.value)}/>
-              </div>
-              <div><Label hint="kg">Peso actual</Label>
-                <Input type="number" unit="kg" value={client.weight} onChange={e=>setNumber('weight',e.target.value)}/>
-              </div>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:12}}>
-              <div><Label hint="nivel">Actividad física</Label>
-                <ActivitySelect value={client.activity} onChange={v=>set({activity:v})}/>
-              </div>
-              <div><Label hint="kg · opcional">Peso objetivo</Label>
-                <Input type="number" unit="kg" value={client.goal_weight||''} onChange={e=>setNumber('goal_weight',e.target.value)}/>
-              </div>
-            </div>
-          </CardContent>
+          <CardHeader icon="ruler" title="Antropometría" description="Medidas base · usadas en cálculos" right={<PopOut onClick={()=>onFloat&&onFloat('antro')}/>}/>
+          <CardContent><AntropometriaBody client={client} onUpdate={onUpdate}/></CardContent>
         </Card>
         <Card style={{gridColumn:'span 2'}}>
-          <CardHeader icon="heart" title="Salud y preferencias" description="Anotaciones · intolerancias · preferencias dietéticas"/>
-          <CardContent>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-              <div><Label hint="patologías, historial, preferencias">Anotaciones</Label>
-                <textarea rows={3} value={client.notes||''} onChange={e=>set({notes:e.target.value})}
-                  placeholder="Patologías, medicación, preferencias…"
-                  style={{width:'100%',boxSizing:'border-box',border:`1px solid ${tokens.borderSoft}`,background:tokens.inputBg,borderRadius:8,padding:10,fontSize:13.5,fontFamily:tokens.fontSans,resize:'vertical',color:tokens.slate900,outline:'none'}}/></div>
-              <div><Label hint="evitar · pulsa Enter para añadir">Alergias / intolerancias</Label>
-                <AllergyEditor allergies={client.allergies||[]} onChange={a=>set({allergies:a})}/>
-              </div>
-            </div>
-          </CardContent>
+          <CardHeader icon="heart" title="Salud y preferencias" description="Anotaciones · intolerancias · preferencias dietéticas" right={<PopOut onClick={()=>onFloat&&onFloat('salud')}/>}/>
+          <CardContent><SaludBody client={client} onUpdate={onUpdate}/></CardContent>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Poppable bodies (used inline in the card AND inside floating panels) ──
+function DatosPersonalesBody({ client, onUpdate }) {
+  const { tokens, Input, Label } = window;
+  const set = patch => onUpdate(patch);
+  return (
+    <>
+      <div style={{marginBottom:12}}>
+        <Label hint="editable">Nombre completo</Label>
+        <Input value={client.full_name} onChange={e=>set({full_name:e.target.value})}/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <div>
+          <Label hint="dd/mm/aaaa">Fecha de nacimiento</Label>
+          <Input type="date" value={client.birth_date||''} onChange={e=>set({birth_date:e.target.value})}/>
+        </div>
+        <div><Label hint="M · F">Sexo</Label>
+          <div style={{display:'inline-flex',background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:8,padding:2,height:36,boxSizing:'border-box'}}>
+            {[{k:'M',l:'Masculino'},{k:'F',l:'Femenino'}].map(o=>(
+              <button key={o.k} onClick={()=>set({sex:o.k})} style={{
+                border:0,background:client.sex===o.k?tokens.brand600:'transparent',
+                color:client.sex===o.k?'#fff':tokens.slate500,
+                fontSize:13,fontWeight:client.sex===o.k?500:400,padding:'0 14px',borderRadius:6,cursor:'pointer',fontFamily:tokens.fontSans
+              }}>{o.l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{marginTop:12}}>
+        <Label hint="objetivo">Objetivo del asesorado</Label>
+        <Input value={client.objective||''} onChange={e=>set({objective:e.target.value})} placeholder="Ej.: Pérdida de grasa"/>
+      </div>
+    </>
+  );
+}
+
+function AntropometriaBody({ client, onUpdate }) {
+  const { Input, Label } = window;
+  const set = patch => onUpdate(patch);
+  const setNumber = (k,v) => set({ [k]: v===''?'':+v });
+  return (
+    <>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <div><Label hint="cm">Altura</Label>
+          <Input type="number" unit="cm" value={client.height} onChange={e=>setNumber('height',e.target.value)}/>
+        </div>
+        <div><Label hint="kg">Peso actual</Label>
+          <Input type="number" unit="kg" value={client.weight} onChange={e=>setNumber('weight',e.target.value)}/>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:12}}>
+        <div><Label hint="nivel">Actividad física</Label>
+          <ActivitySelect value={client.activity} onChange={v=>set({activity:v})}/>
+        </div>
+        <div><Label hint="kg · opcional">Peso objetivo</Label>
+          <Input type="number" unit="kg" value={client.goal_weight||''} onChange={e=>setNumber('goal_weight',e.target.value)}/>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SaludBody({ client, onUpdate }) {
+  const { tokens, Label } = window;
+  const set = patch => onUpdate(patch);
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+      <div><Label hint="patologías, historial, preferencias">Anotaciones</Label>
+        <textarea rows={3} value={client.notes||''} onChange={e=>set({notes:e.target.value})}
+          placeholder="Patologías, medicación, preferencias…"
+          style={{width:'100%',boxSizing:'border-box',border:`1px solid ${tokens.borderSoft}`,background:tokens.inputBg,borderRadius:8,padding:10,fontSize:13.5,fontFamily:tokens.fontSans,resize:'vertical',color:tokens.slate900,outline:'none'}}/></div>
+      <div><Label hint="evitar · pulsa Enter para añadir">Alergias / intolerancias</Label>
+        <AllergyEditor allergies={client.allergies||[]} onChange={a=>set({allergies:a})}/>
       </div>
     </div>
   );
@@ -216,8 +239,34 @@ function AllergyEditor({ allergies, onChange }) {
   );
 }
 
-function NutritionPlan({ client, onUpdate }) {
-  const { tokens, Icon, Card, CardHeader, CardContent, Badge, Button, MacroBar, Label, Input, Eyebrow } = window;
+function NutritionPlan({ client, onUpdate, onFloat }) {
+  const { tokens, Icon, Card, CardHeader, CardContent, Badge, Button, MacroBar, Label, Input, Eyebrow, PopOut } = window;
+
+  // ── Fases / planes ──────────────────────────────────────
+  const plans = (client.plans && client.plans.length) ? client.plans
+    : [{ id:1, name:'Plan inicial', phase:'Déficit', months:3, start:client.since||'', targets:client.targets, meals:client.meals }];
+  const activePlanId = (client.activePlanId!=null && plans.some(p=>p.id===client.activePlanId)) ? client.activePlanId : plans[0].id;
+  const selectPlan = (id) => { const p=plans.find(x=>x.id===id); if(p) onUpdate({ plans, activePlanId:id, targets:p.targets, meals:p.meals }); };
+  const createPlan = () => {
+    const nid = Math.max(0, ...plans.map(p=>p.id||0)) + 1;
+    const np = { id:nid, name:`Fase ${plans.length+1}`, phase:'Déficit', months:3, start:'',
+      targets:{ kcal:2000, pPerKg:1.8, fPerKg:0.8, p:126, c:248, f:56 },
+      meals:[
+        { id:1, icon:'coffee',   title:'Desayuno', time:'08:30', options:[{id:1,label:'Principal',kcal:0,p:0,c:0,f:0,items:[]}] },
+        { id:2, icon:'utensils', title:'Comida',   time:'14:00', options:[{id:1,label:'Principal',kcal:0,p:0,c:0,f:0,items:[]}] },
+        { id:3, icon:'moon',     title:'Cena',     time:'21:00', options:[{id:1,label:'Principal',kcal:0,p:0,c:0,f:0,items:[]}] },
+      ] };
+    onUpdate({ plans:[...plans, np], activePlanId:nid, targets:np.targets, meals:np.meals });
+  };
+  const deletePlan = (id) => {
+    if (plans.length<=1) { alert('Debe haber al menos un plan.'); return; }
+    const p = plans.find(x=>x.id===id);
+    if (!confirm(`¿Borrar la fase «${p?p.name:''}»? Se perderán sus objetivos y comidas.`)) return;
+    const rest = plans.filter(x=>x.id!==id);
+    const na = (id===activePlanId) ? rest[0] : (rest.find(x=>x.id===activePlanId)||rest[0]);
+    onUpdate({ plans:rest, activePlanId:na.id, targets:na.targets, meals:na.meals });
+  };
+  const updatePlanMeta = (id, patch) => onUpdate({ plans: plans.map(p=>p.id===id?{...p,...patch}:p) });
   const targets = client.targets || { kcal:2200, p:150, c:240, f:70 };
   const slots = client.meals || [];
 
@@ -281,13 +330,9 @@ function NutritionPlan({ client, onUpdate }) {
       {/* Page title */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingBottom:12,borderBottom:`1px solid ${tokens.borderSoft}`}}>
         <div>
-          <div style={{fontFamily:tokens.fontMono,fontSize:10.5,textTransform:'uppercase',letterSpacing:'.14em',color:tokens.slate500,fontWeight:600}}>Plan · semana 04</div>
-          <h1 style={{fontFamily:tokens.fontSerif,fontSize:30,fontWeight:500,letterSpacing:'-.02em',margin:'4px 0 0',color:tokens.slate900,lineHeight:1.05}}>
+          <h1 style={{fontFamily:tokens.fontSerif,fontSize:30,fontWeight:500,letterSpacing:'-.02em',margin:0,color:tokens.slate900,lineHeight:1.05}}>
             Plan nutricional
           </h1>
-          <p style={{fontSize:13,color:tokens.slate500,margin:'4px 0 0'}}>
-            {(totals.kcal||0).toLocaleString('es-ES')} kcal · {slots.length} comidas · objetivo {(targets.kcal||0).toLocaleString('es-ES')} kcal
-          </p>
         </div>
         <div style={{display:'flex',gap:8}}>
           <Button variant="outline" icon="sliders" size="sm">Escalar plan</Button>
@@ -295,39 +340,162 @@ function NutritionPlan({ client, onUpdate }) {
         </div>
       </div>
 
+      <PlanManager plans={plans} activeId={activePlanId} onSelect={selectPlan} onCreate={createPlan} onDelete={deletePlan} onMeta={updatePlanMeta}/>
+
       {/* Objetivos + macros */}
       <Card>
         <CardHeader icon="flame" title="Objetivos del día" description="Mantenimiento orientativo + reparto automático por g/kg de peso"
-          right={<Badge variant="brand">Editando</Badge>}/>
+          right={<div style={{display:'flex',alignItems:'center',gap:8}}><Badge variant="brand">Editando</Badge><PopOut onClick={()=>onFloat&&onFloat('objetivos')}/></div>}/>
         <CardContent>
-          <div style={{display:'grid',gridTemplateColumns:'186px 1fr',gap:18,alignItems:'stretch'}}>
-            <MaintenanceMini maintenance={maintenance} kcalTarget={kcalTarget} tmb={tmb} actFactor={actFactor}/>
-            <div>
-              <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:12,marginBottom:18}}>
-                <div><Label hint={dev===0?'exacto':`real ${realKcal.toLocaleString('es-ES')}`}>Calorías objetivo</Label><Input type="number" unit="kcal" value={targets.kcal} onChange={e=>persistTargets({kcal:e.target.value===''?'':+e.target.value})}/></div>
-                <div><Label hint={`${objP} g`}>Proteína</Label><Input type="number" step="0.1" unit="g/kg" value={pPerKg} onChange={e=>persistTargets({pPerKg:e.target.value===''?'':+e.target.value})}/></div>
-                <div><Label hint={`${objF} g`}>Grasa</Label><Input type="number" step="0.1" unit="g/kg" value={fPerKg} onChange={e=>persistTargets({fPerKg:e.target.value===''?'':+e.target.value})}/></div>
-              </div>
-              <MacroDonut plan={{kcalTarget, p:objP, c:objC, f:objF, pPerKg, fPerKg, realKcal, dev}}/>
-            </div>
-          </div>
+          <ObjetivosBody client={client} onUpdate={onUpdate}/>
         </CardContent>
       </Card>
 
       {/* Meal slots */}
       <div>
-        <Eyebrow right={`${slots.length} ${slots.length===1?'comida':'comidas'} · clic para desplegar opciones`}>Comidas del día</Eyebrow>
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {slots.map(s => (
-            <MealSlot key={s.id} slot={s} onUpdate={patch=>updateSlot(s.id,patch)} onRemove={()=>removeSlot(s.id)}/>
-          ))}
-          <button onClick={addSlot} style={{border:`1.5px dashed ${tokens.borderSoft}`,background:'transparent',borderRadius:12,padding:'12px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,color:tokens.slate500,fontFamily:tokens.fontSans,fontSize:13,fontWeight:500,cursor:'pointer'}}
-            onMouseEnter={e=>{e.currentTarget.style.background=tokens.surfaceAlt;e.currentTarget.style.borderColor=tokens.brand600;e.currentTarget.style.color=tokens.brand700;}}
-            onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=tokens.borderSoft;e.currentTarget.style.color=tokens.slate500;}}>
-            <Icon name="plus" size={14}/> Añadir comida
-          </button>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',padding:'4px 2px 10px',borderBottom:`1px solid ${tokens.borderSoft}`,marginBottom:12}}>
+          <span style={{fontSize:10.5,textTransform:'uppercase',letterSpacing:'.14em',color:tokens.slate500,fontWeight:600}}>Comidas del día</span>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontFamily:tokens.fontMono,fontSize:10,color:tokens.slate400,letterSpacing:'.04em'}}>{slots.length} {slots.length===1?'comida':'comidas'} · clic para desplegar opciones</span>
+            <PopOut onClick={()=>onFloat&&onFloat('comidas')}/>
+          </div>
         </div>
+        <ComidasDiaBody client={client} onUpdate={onUpdate}/>
       </div>
+    </div>
+  );
+}
+
+// ── Gestor de fases / planes (selector tipo línea de tiempo + crear/renombrar/borrar) ──
+function PlanManager({ plans, activeId, onSelect, onCreate, onDelete, onMeta }) {
+  const { tokens, Icon, Button, Input, Label, Card, CardHeader, CardContent } = window;
+  const phases = {
+    'Déficit':       { c:tokens.brand600, bg:tokens.brand50,    fg:tokens.brand700 },
+    'Mantenimiento': { c:tokens.slate400, bg:tokens.slate100,   fg:tokens.slate700 },
+    'Volumen':       { c:tokens.amber600, bg:tokens.amber50,    fg:tokens.amber700 },
+    'Otro':          { c:tokens.slate300, bg:tokens.surfaceAlt, fg:tokens.slate600 },
+  };
+  const ap = plans.find(p=>p.id===activeId) || plans[0];
+  const mUnit = (m)=> (+m===1?'mes':'meses');
+  return (
+    <Card>
+      <CardHeader icon="clock" title="Fases del plan" description="Encadena etapas — p. ej. déficit 3 meses, luego volumen 4 meses"
+        right={<Button variant="primary" size="sm" icon="plus" onClick={onCreate}>Nueva fase</Button>}/>
+      <CardContent>
+        {/* Selector tipo línea de tiempo (el ancho de cada fase es proporcional a su duración) */}
+        <div style={{display:'flex',gap:8,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
+          {plans.map(p=>{
+            const ph = phases[p.phase]||phases['Otro'];
+            const on = p.id===activeId;
+            return (
+              <button key={p.id} onClick={()=>onSelect(p.id)} title={`${p.phase||''} · ${p.months||'—'} ${mUnit(p.months)}`}
+                style={{
+                  flex:`${Math.max(1,+p.months||1)} 1 0`, minWidth:130, textAlign:'left',
+                  border:`1px solid ${on?ph.c:tokens.borderSoft}`, background:on?ph.bg:tokens.surface,
+                  borderRadius:10, padding:'9px 12px 10px 14px', cursor:'pointer', position:'relative', overflow:'hidden',
+                  transition:'all .12s',
+                }}
+                onMouseEnter={e=>{if(!on)e.currentTarget.style.background=tokens.surfaceAlt;}}
+                onMouseLeave={e=>{if(!on)e.currentTarget.style.background=tokens.surface;}}>
+                <span style={{position:'absolute',left:0,top:0,bottom:0,width:3,background:ph.c}}/>
+                <div style={{display:'flex',alignItems:'center',gap:7}}>
+                  <span style={{width:7,height:7,borderRadius:'50%',background:ph.c,flexShrink:0}}/>
+                  <span style={{fontFamily:tokens.fontSerif,fontSize:14,fontWeight:500,color:tokens.slate900,letterSpacing:'-.01em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name||'Sin nombre'}</span>
+                </div>
+                <div style={{fontFamily:tokens.fontMono,fontSize:9.5,color:on?ph.fg:tokens.slate400,letterSpacing:'.06em',textTransform:'uppercase',fontWeight:600,marginTop:4}}>{p.phase||'—'} · {p.months||'—'} {mUnit(p.months)}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Editor de la fase activa */}
+        {ap && (
+          <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr 0.9fr auto',gap:12,alignItems:'end',paddingTop:14,borderTop:`1px solid ${tokens.borderDash}`}}>
+            <div><Label hint="editable">Nombre de la fase</Label>
+              <Input value={ap.name||''} onChange={e=>onMeta(ap.id,{name:e.target.value})} placeholder="Ej.: Definición"/></div>
+            <div><Label hint="tipo">Tipo de fase</Label>
+              <select value={ap.phase||'Otro'} onChange={e=>onMeta(ap.id,{phase:e.target.value})}
+                style={{height:36,width:'100%',boxSizing:'border-box',border:`1px solid ${tokens.borderSoft}`,background:tokens.inputBg,borderRadius:8,padding:'0 10px',fontSize:14,fontFamily:tokens.fontSans,color:tokens.slate900,cursor:'pointer',outline:'none'}}>
+                {Object.keys(phases).map(k=><option key={k} value={k}>{k}</option>)}
+              </select></div>
+            <div><Label hint="meses">Duración</Label>
+              <Input type="number" unit="meses" value={ap.months??''} onChange={e=>onMeta(ap.id,{months:e.target.value===''?'':+e.target.value})}/></div>
+            <div><Button variant="danger" icon="trash" onClick={()=>onDelete(ap.id)} disabled={plans.length<=1}>Borrar</Button></div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Objetivos del día — cuerpo poppable (recalcula todo desde el cliente) ──
+function ObjetivosBody({ client, onUpdate }) {
+  const { Label, Input } = window;
+  const targets = client.targets || { kcal:2200, p:150, c:240, f:70 };
+  const weight = +client.weight || 0;
+  const _age = (() => {
+    if (!client.birth_date) return 0;
+    const d = new Date(client.birth_date); if (isNaN(d)) return 0;
+    const n = new Date(); let a = n.getFullYear()-d.getFullYear();
+    const m = n.getMonth()-d.getMonth(); if (m<0||(m===0&&n.getDate()<d.getDate())) a--;
+    return a;
+  })();
+  const tmb = client.sex==='F'
+    ? Math.round(10*weight + 6.25*(+client.height||0) - 5*_age - 161)
+    : Math.round(10*weight + 6.25*(+client.height||0) - 5*_age + 5);
+  const actFactor = {'Sedentaria':1.2,'Ligera':1.375,'Moderada':1.55,'Intensa':1.725,'Muy intensa':1.9}[client.activity]||1.55;
+  const maintenance = (weight && (+client.height||0)) ? Math.round(tmb*actFactor) : 0;
+  const pPerKg = targets.pPerKg ?? 1.8;
+  const fPerKg = targets.fPerKg ?? 0.8;
+  const kcalTarget = +targets.kcal || 0;
+  const objP = Math.round((+pPerKg||0)*weight);
+  const objF = Math.round((+fPerKg||0)*weight);
+  const objC = Math.max(0, Math.round((kcalTarget - objP*4 - objF*9)/4));
+  const realKcal = objP*4 + objC*4 + objF*9;
+  const dev = realKcal - kcalTarget;
+  const persistTargets = (next) => {
+    const merged = { ...targets, ...next };
+    const pk=+merged.pPerKg||0, fk=+merged.fPerKg||0, kc=+merged.kcal||0;
+    const p=Math.round(pk*weight), f=Math.round(fk*weight);
+    const c=Math.max(0, Math.round((kc - p*4 - f*9)/4));
+    onUpdate({ targets: { ...merged, p, c, f } });
+  };
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'186px 1fr',gap:18,alignItems:'stretch'}}>
+      <MaintenanceMini maintenance={maintenance} kcalTarget={kcalTarget} tmb={tmb} actFactor={actFactor}/>
+      <div>
+        <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:12,marginBottom:18}}>
+          <div><Label hint={dev===0?'exacto':`real ${realKcal.toLocaleString('es-ES')}`}>Calorías objetivo</Label><Input type="number" unit="kcal" value={targets.kcal} onChange={e=>persistTargets({kcal:e.target.value===''?'':+e.target.value})}/></div>
+          <div><Label hint={`${objP} g`}>Proteína</Label><Input type="number" step="0.1" unit="g/kg" value={pPerKg} onChange={e=>persistTargets({pPerKg:e.target.value===''?'':+e.target.value})}/></div>
+          <div><Label hint={`${objF} g`}>Grasa</Label><Input type="number" step="0.1" unit="g/kg" value={fPerKg} onChange={e=>persistTargets({fPerKg:e.target.value===''?'':+e.target.value})}/></div>
+        </div>
+        <MacroDonut plan={{kcalTarget, p:objP, c:objC, f:objF, pPerKg, fPerKg, realKcal, dev}}/>
+      </div>
+    </div>
+  );
+}
+
+// ── Comidas del día — cuerpo poppable (lista de comidas + añadir) ──
+function ComidasDiaBody({ client, onUpdate }) {
+  const { tokens, Icon } = window;
+  const slots = client.meals || [];
+  const setSlots = (newSlots) => onUpdate({ meals: newSlots });
+  const updateSlot = (id, patch) => setSlots(slots.map(s => s.id===id ? {...s, ...patch} : s));
+  const removeSlot = (id) => setSlots(slots.filter(s => s.id !== id));
+  const addSlot = () => {
+    const nextId = Math.max(0, ...slots.map(s=>s.id||0)) + 1;
+    setSlots([...slots, { id: nextId, icon:'utensils', title:'Nueva comida', time:'12:00', options: [{ id:1, label:'Principal', kcal:0, p:0, c:0, f:0, items:[] }] }]);
+  };
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {slots.map(s => (
+        <MealSlot key={s.id} slot={s} onUpdate={patch=>updateSlot(s.id,patch)} onRemove={()=>removeSlot(s.id)}/>
+      ))}
+      <button onClick={addSlot} style={{border:`1.5px dashed ${tokens.borderSoft}`,background:'transparent',borderRadius:12,padding:'12px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,color:tokens.slate500,fontFamily:tokens.fontSans,fontSize:13,fontWeight:500,cursor:'pointer'}}
+        onMouseEnter={e=>{e.currentTarget.style.background=tokens.surfaceAlt;e.currentTarget.style.borderColor=tokens.brand600;e.currentTarget.style.color=tokens.brand700;}}
+        onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=tokens.borderSoft;e.currentTarget.style.color=tokens.slate500;}}>
+        <Icon name="plus" size={14}/> Añadir comida
+      </button>
     </div>
   );
 }
@@ -461,4 +629,4 @@ function MacroDonut({ plan }) {
   );
 }
 
-Object.assign(window, { PatientForm, NutritionPlan, ActivitySelect, AllergyEditor, MacroDonut, MaintenanceMini });
+Object.assign(window, { PatientForm, NutritionPlan, ActivitySelect, AllergyEditor, MacroDonut, MaintenanceMini, DatosPersonalesBody, AntropometriaBody, SaludBody, ObjetivosBody, ComidasDiaBody, PlanManager });

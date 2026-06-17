@@ -9,11 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     html,body,#app{height:100%}
-    body{margin:0;background:#f6f7f5;font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#0f172a;-webkit-font-smoothing:antialiased;transition:background .2s, color .2s}
+    body{margin:0;background:#edefe7;font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#0f172a;-webkit-font-smoothing:antialiased;transition:background .2s, color .2s}
     body[data-theme="dark"]{background:#0c100e;color:#edf0ee}
     *{box-sizing:border-box}
     ::-webkit-scrollbar{width:10px;height:10px}
-    ::-webkit-scrollbar-thumb{background:#e2e5e0;border-radius:999px;border:2px solid #f6f7f5}
+    ::-webkit-scrollbar-thumb{background:#d8dad0;border-radius:999px;border:2px solid #edefe7}
     ::-webkit-scrollbar-track{background:transparent}
     body[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#2a302b;border-color:#0c100e}
     input[type=number]::-webkit-outer-spin-button,
@@ -67,6 +67,7 @@
   <script type="text/babel" src="ui_kits/web/MealsIngredients.jsx"></script>
   <script type="text/babel" src="ui_kits/web/MealsExtras.jsx"></script>
   <script type="text/babel" src="ui_kits/web/MealsShell.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/Floats.jsx"></script>
 
   <script type="text/babel">
     // Initial client data — new structure: each meal = SLOT with options[]
@@ -140,6 +141,14 @@
       },
     ];
 
+    // Cada asesorado tiene una o varias FASES (planes). Migración: envolver datos actuales en una fase.
+    initialClients.forEach(c => {
+      if (!c.plans) {
+        c.plans = [{ id:1, name:'Definición', phase:'Déficit', months:3, start:c.since||'', targets:c.targets, meals:c.meals }];
+        c.activePlanId = 1;
+      }
+    });
+
     function genSampleReviews(){
       return Array.from({length:32}).map((_,i)=>({
         w:`S ${i+1}`,
@@ -156,18 +165,23 @@
     }
 
     function newClient(id, name) {
+      const targets = { kcal:2000, pPerKg:1.8, fPerKg:0.8, p:126, c:248, f:56 };
+      const meals = [
+        { id:1, icon:'coffee',   title:'Desayuno', time:'08:30', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+        { id:2, icon:'utensils', title:'Comida',   time:'14:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+        { id:3, icon:'moon',     title:'Cena',     time:'21:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+      ];
+      const since = new Date().toLocaleDateString('es-ES',{month:'short',year:'numeric'});
       return {
         id, full_name:name, objective:'Sin objetivo definido', streak:0,
         birth_date:'', sex:'M', height:170, weight:70, activity:'Moderada', goal_weight:'',
-        since:new Date().toLocaleDateString('es-ES',{month:'short',year:'numeric'}),
+        since,
         notes:'', allergies:[],
-        targets:{ kcal:2000, pPerKg:1.8, fPerKg:0.8, p:126, c:248, f:56 },
+        targets,
         reviews:[],
-        meals:[
-          { id:1, icon:'coffee',   title:'Desayuno', time:'08:30', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
-          { id:2, icon:'utensils', title:'Comida',   time:'14:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
-          { id:3, icon:'moon',     title:'Cena',     time:'21:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
-        ],
+        meals,
+        activePlanId:1,
+        plans:[{ id:1, name:'Plan inicial', phase:'Déficit', months:3, start:since, targets, meals }],
       };
     }
 
@@ -180,6 +194,11 @@
       const [dirty, setDirty] = React.useState(false);
       const [addOpen, setAddOpen] = React.useState(false);
       const [comidasOpen, setComidasOpen] = React.useState(false);
+      const [floats, setFloats] = React.useState([]);
+      const [reviewSel, setReviewSel] = React.useState(null);
+      React.useEffect(() => { setReviewSel(null); }, [active]);
+      const floatPanel = (type) => setFloats(f => f.some(x=>x.type===type) ? f : [...f, { id:`${type}-${Date.now()}`, type }]);
+      const closeFloat = (id) => setFloats(f => f.filter(x=>x.id!==id));
 
       window.setTheme && window.setTheme(theme);
       React.useEffect(() => { document.body.setAttribute('data-theme', theme); }, [theme]);
@@ -188,7 +207,16 @@
       const clientFull = client ? { ...client, meta: client.objective || 'Sin objetivo definido' } : null;
 
       const updateClient = (id, patch) => {
-        setClients(cs => cs.map(c => c.id===id ? { ...c, ...patch } : c));
+        setClients(cs => cs.map(c => {
+          if (c.id !== id) return c;
+          let next = { ...c, ...patch };
+          // El plan activo es la fuente de verdad de targets/meals: al editarlos, sincrónizalos en la fase activa.
+          if (('targets' in patch || 'meals' in patch) && Array.isArray(next.plans) && next.plans.length) {
+            const apId = next.activePlanId != null ? next.activePlanId : next.plans[0].id;
+            next = { ...next, plans: next.plans.map(p => p.id === apId ? { ...p, targets: next.targets, meals: next.meals } : p) };
+          }
+          return next;
+        }));
         setDirty(true);
       };
 
@@ -214,8 +242,7 @@
       const save = () => setDirty(false);
 
       const tabs = [
-        { id:'ficha', label:'Ficha', icon:'user' },
-        { id:'plan', label:'Plan nutricional', icon:'utensils', badge: tab==='plan' && dirty ? 'editando' : null },
+        { id:'plan', label:'Ficha y plan', icon:'utensils', badge: tab==='plan' && dirty ? 'editando' : null },
         { id:'rev', label:'Revisiones', icon:'clipboard' },
         { id:'pdf', label:'PDF', icon:'file' },
       ];
@@ -234,15 +261,35 @@
             {clientFull && <Header client={clientFull} tabs={tabs} active={tab} onSelect={setTab} hasUnsaved={dirty} onSave={save}/>}
             <main style={{flex:1,overflow:'auto',padding:'20px 26px 40px',display:'flex'}}>
               <div style={{maxWidth:1180,width:'100%',margin:'0 auto',minHeight:0,display:'flex',flexDirection:'column',flex:1}}>
-                {client && tab==='ficha' && <PatientForm client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
-                {client && tab==='plan'  && <NutritionPlan client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
-                {client && tab==='rev'   && <Reviews client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
+                {client && tab==='plan'  && (
+                  <div style={{display:'flex',flexDirection:'column'}}>
+                    <PatientForm client={client} onUpdate={patch=>updateClient(client.id, patch)} onFloat={floatPanel}/>
+                    <SectionSeparator/>
+                    <NutritionPlan client={client} onUpdate={patch=>updateClient(client.id, patch)} onFloat={floatPanel}/>
+                  </div>
+                )}
+                {client && tab==='rev'   && <Reviews client={client} onUpdate={patch=>updateClient(client.id, patch)} onFloat={floatPanel} reviewSel={reviewSel} onReviewSel={setReviewSel}/>}
                 {client && tab==='pdf'   && <PdfPlan client={client}/>}
               </div>
             </main>
             {comidasOpen && <ComidasWindow onClose={()=>setComidasOpen(false)}/>}
           </div>
           {addOpen && <AddClientModal onClose={()=>setAddOpen(false)} onCreate={name=>{addClient(name);setAddOpen(false);}}/>}
+          <FloatLayer floats={floats} client={client} onUpdate={patch=>updateClient(client.id, patch)} onClose={closeFloat} reviewSel={reviewSel} onReviewSel={setReviewSel}/>
+        </div>
+      );
+    }
+
+    function SectionSeparator() {
+      const { tokens, Icon } = window;
+      return (
+        <div style={{display:'flex',alignItems:'center',gap:16,margin:'36px 0 26px'}}>
+          <div style={{flex:1,height:1,background:tokens.borderSoft}}/>
+          <div style={{display:'flex',alignItems:'center',gap:9,padding:'6px 14px',borderRadius:999,background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,boxShadow:'0 1px 2px rgba(15,23,42,.04)'}}>
+            <span style={{width:22,height:22,borderRadius:7,background:tokens.brand50,color:tokens.brand700,display:'inline-flex',alignItems:'center',justifyContent:'center',border:`1px solid ${tokens.brand100}`}}><Icon name="utensils" size={12}/></span>
+            <span style={{fontFamily:tokens.fontMono,fontSize:9.5,letterSpacing:'.16em',textTransform:'uppercase',color:tokens.slate500,fontWeight:700}}>El plan</span>
+          </div>
+          <div style={{flex:1,height:1,background:tokens.borderSoft}}/>
         </div>
       );
     }

@@ -2,14 +2,12 @@
 // MealSlot / MealRow now live in MealSlot.jsx.
 // Las revisiones se guardan en client.reviews y se pueden añadir manualmente.
 
-function Reviews({ client, onUpdate }) {
-  const { tokens, Icon, Card, CardHeader, CardContent, Badge, Button } = window;
+function Reviews({ client, onUpdate, onFloat, reviewSel, onReviewSel }) {
+  const { tokens, Icon, Card, CardHeader, CardContent, Badge, Button, PopOut } = window;
   const weeks = client.reviews || [];
-  const [sel, setSel] = React.useState(Math.max(0, weeks.length-1));
-  const [chartType, setChartType] = React.useState('line'); // line | bar
+  const sel = reviewSel==null ? Math.max(0, weeks.length-1) : Math.min(reviewSel, Math.max(0, weeks.length-1));
+  const setSel = (i)=> onReviewSel && onReviewSel(i);
   const [addOpen, setAddOpen] = React.useState(false);
-
-  React.useEffect(() => { setSel(Math.max(0, weeks.length-1)); }, [client.id]);
 
   const addReview = (rev) => {
     const next = [...weeks, rev];
@@ -65,49 +63,23 @@ function Reviews({ client, onUpdate }) {
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
       {Title}
 
-      {/* Stat strip — latest week */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
-        {[
-          {l:'Cumplimiento', v:cur.cumpl, u:`/ 10`, c:tokens.brand700},
-          {l:'Pasos / día',  v:(cur.steps||0).toLocaleString('es'), u:'medios', c:tokens.slate900},
-          {l:'Agua',         v:(cur.water||0).toFixed(1), u:'L/día', c:'#0ea5e9'},
-          {l:'Peso',         v:(cur.peso||0).toFixed(1),  u:'kg', c:tokens.slate900, delta:weeks.length>1?`${(weeks[0].peso-cur.peso)>=0?'−':'+'}${Math.abs(weeks[0].peso-cur.peso).toFixed(1)} kg vs S 1`:null},
-        ].map(s=>(
-          <div key={s.l} style={{background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:10,padding:'12px 14px'}}>
-            <div style={{fontFamily:tokens.fontMono,fontSize:9.5,color:tokens.slate400,letterSpacing:'.12em',textTransform:'uppercase',fontWeight:600}}>{s.l}</div>
-            <div style={{fontFamily:tokens.fontSerif,fontSize:26,fontWeight:500,color:s.c,letterSpacing:'-.02em',marginTop:4,fontVariantNumeric:'tabular-nums'}}>
-              {s.v}<small style={{fontFamily:tokens.fontSans,fontSize:11,fontWeight:500,color:tokens.slate500,marginLeft:4,letterSpacing:0}}>{s.u}</small>
-            </div>
-            {s.delta && <div style={{fontFamily:tokens.fontMono,fontSize:10,color:tokens.brand700,marginTop:2,letterSpacing:'.04em',fontWeight:600}}>{s.delta}</div>}
-          </div>
-        ))}
+      {/* Stat strip — selected week */}
+      <div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <span style={{fontSize:10.5,textTransform:'uppercase',letterSpacing:'.14em',color:tokens.slate500,fontWeight:600}}>Resumen · {cur.w}</span>
+          <PopOut onClick={()=>onFloat&&onFloat('revUltima')}/>
+        </div>
+        <UltimaRevisionBody week={cur} weeks={weeks}/>
       </div>
 
       {/* Charts */}
       <Card>
         <CardHeader icon="chart" title="Evolución"
           description="Datos auto-guardados del formulario semanal"
-          right={
-            <div style={{display:'inline-flex',background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:8,padding:2}}>
-              {[{k:'line',ic:'chart',l:'Línea'},{k:'bar',ic:'scale',l:'Barras'}].map(o=>(
-                <button key={o.k} onClick={()=>setChartType(o.k)} style={{
-                  border:0,background:chartType===o.k?tokens.brand600:'transparent',
-                  color:chartType===o.k?'#fff':tokens.slate500,fontSize:12,fontWeight:500,
-                  padding:'5px 10px',borderRadius:6,cursor:'pointer',fontFamily:tokens.fontSans,
-                  display:'inline-flex',alignItems:'center',gap:5,
-                }}>
-                  <Icon name={o.ic} size={12}/>{o.l}
-                </button>
-              ))}
-            </div>
-          }
+          right={<PopOut onClick={()=>onFloat&&onFloat('evolucion')}/>}
         />
         <CardContent>
-          <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)',gap:14}}>
-            <MiniChart title="Pasos"   unit="pasos/día" data={weeks.map(w=>w.steps)} labels={weeks.map(w=>w.w)} color="#059669" type={chartType} format={v=>(v||0).toLocaleString('es')}/>
-            <MiniChart title="Agua"    unit="L/día" data={weeks.map(w=>w.water)} labels={weeks.map(w=>w.w)} color="#0ea5e9" type={chartType} format={v=>(v||0).toFixed(1)}/>
-            <MiniChart title="Peso"    unit="kg" data={weeks.map(w=>w.peso)} labels={weeks.map(w=>w.w)} color="#b45309" type={chartType} format={v=>(v||0).toFixed(1)}/>
-          </div>
+          <EvolucionBody client={client}/>
         </CardContent>
       </Card>
 
@@ -115,30 +87,9 @@ function Reviews({ client, onUpdate }) {
       <div style={{display:'grid',gridTemplateColumns:'260px minmax(0,1fr)',gap:14}}>
         {/* Week list */}
         <Card>
-          <CardHeader icon="clipboard" title="Historial" description={`${weeks.length} revisiones`}/>
-          <div style={{maxHeight:440,overflowY:'auto'}}>
-            {weeks.slice().reverse().map((w, i) => {
-              const idx = weeks.length - 1 - i;
-              const on = idx===Math.min(sel, weeks.length-1);
-              return (
-                <button key={idx} onClick={()=>setSel(idx)} style={{
-                  width:'100%',border:0,borderTop:`1px solid ${tokens.borderDash}`,
-                  background:on?tokens.brand50:'transparent',
-                  padding:'10px 16px',textAlign:'left',cursor:'pointer',position:'relative',
-                  display:'grid',gridTemplateColumns:'1fr auto',gap:8,alignItems:'center',fontFamily:tokens.fontSans,
-                }}
-                onMouseEnter={e=>{if(!on)e.currentTarget.style.background=tokens.surfaceAlt}}
-                onMouseLeave={e=>{if(!on)e.currentTarget.style.background='transparent'}}>
-                  {on && <span style={{position:'absolute',left:0,top:8,bottom:8,width:2.5,background:tokens.brand600,borderRadius:'0 2px 2px 0'}}/>}
-                  <div>
-                    <div style={{fontFamily:tokens.fontMono,fontSize:10,color:on?tokens.brand700:tokens.slate400,letterSpacing:'.1em',fontWeight:600}}>{w.w} · {w.date}</div>
-                    <div style={{fontSize:13,color:tokens.slate900,marginTop:2,fontWeight:500,letterSpacing:'-.005em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{(w.peso||0).toFixed(1)} kg · {(w.water||0).toFixed(1)} L</div>
-                  </div>
-                  <div style={{fontFamily:tokens.fontSerif,fontSize:15,fontWeight:500,color:tokens.slate900,fontVariantNumeric:'tabular-nums'}}>{w.cumpl}<small style={{fontFamily:tokens.fontMono,fontSize:9,color:tokens.slate400,marginLeft:1}}>/10</small></div>
-                </button>
-              );
-            })}
-          </div>
+          <CardHeader icon="clipboard" title="Historial" description={`${weeks.length} revisiones`}
+            right={<PopOut onClick={()=>onFloat&&onFloat('historial')}/>}/>
+          <HistorialBody weeks={weeks} sel={sel} setSel={setSel}/>
         </Card>
 
         {/* Detail — weekly form */}
@@ -146,36 +97,10 @@ function Reviews({ client, onUpdate }) {
           <CardHeader icon="user"
             title={`${cur.w} · semana del ${cur.date}`}
             description="Formulario del asesorado · guardado automático"
-            right={<Badge variant="secondary"><Icon name="save" size={10}/><span style={{marginLeft:4}}>guardado</span></Badge>}
+            right={<div style={{display:'flex',alignItems:'center',gap:8}}><Badge variant="secondary"><Icon name="save" size={10}/><span style={{marginLeft:4}}>guardado</span></Badge><PopOut onClick={()=>onFloat&&onFloat('semana')}/></div>}
           />
           <CardContent>
-            {/* Cumplimiento */}
-            <div style={{marginBottom:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
-                <span style={{fontFamily:tokens.fontMono,fontSize:10,color:tokens.slate500,letterSpacing:'.12em',textTransform:'uppercase',fontWeight:600}}>Cumplimiento del plan</span>
-                <span style={{fontFamily:tokens.fontSerif,fontSize:20,fontWeight:500,color:tokens.brand700,fontVariantNumeric:'tabular-nums',letterSpacing:'-.01em'}}>{cur.cumpl}<small style={{fontFamily:tokens.fontSans,fontSize:12,color:tokens.slate500,marginLeft:3}}>/ 10</small></span>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(10,1fr)',gap:3}}>
-                {Array.from({length:10}).map((_,i)=>(
-                  <div key={i} style={{height:8,borderRadius:2,background:i<cur.cumpl?tokens.brand600:tokens.slate100}}/>
-                ))}
-              </div>
-            </div>
-
-            {/* Metrics grid */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
-              <MetricTile ic="chart"  lab="Pasos medios"   val={(cur.steps||0).toLocaleString('es')} u="pasos/día"/>
-              <MetricTile ic="leaf"   lab="Agua"           val={(cur.water||0).toFixed(1)} u="L/día"/>
-              <MetricTile ic="scale"  lab="Peso"           val={(cur.peso||0).toFixed(1)}  u="kg"/>
-            </div>
-
-            {/* Open answers */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-              <Answer label="¿Comidas fuera del plan?" val={cur.fuera||'—'} flag={(cur.fuera||'').startsWith('Sí')}/>
-              <Answer label="¿Cambiaría algo del plan?" val={cur.cambio||'—'}/>
-              <Answer label="¿Cómo te sentiste esta semana?" val={cur.sintio||'—'} span/>
-              <Answer label="Complemento / notas" val={cur.extra||'—'} span/>
-            </div>
+            <RevisionDetalleBody week={cur}/>
           </CardContent>
         </Card>
       </div>
@@ -185,7 +110,133 @@ function Reviews({ client, onUpdate }) {
   );
 }
 
-// ─── Add review modal ───────────────────────────────────────
+// ── Evolución — cuerpo poppable (gráficas + toggle línea/barras) ──
+function EvolucionBody({ client }) {
+  const { tokens, Icon } = window;
+  const weeks = client.reviews || [];
+  const [chartType, setChartType] = React.useState('line');
+  if (!weeks.length) return <div style={{padding:'24px',textAlign:'center',color:tokens.slate500,fontSize:13}}>Sin datos todavía.</div>;
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}>
+        <div style={{display:'inline-flex',background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:8,padding:2}}>
+          {[{k:'line',ic:'chart',l:'Línea'},{k:'bar',ic:'scale',l:'Barras'}].map(o=>(
+            <button key={o.k} onClick={()=>setChartType(o.k)} style={{
+              border:0,background:chartType===o.k?tokens.brand600:'transparent',
+              color:chartType===o.k?'#fff':tokens.slate500,fontSize:12,fontWeight:500,
+              padding:'5px 10px',borderRadius:6,cursor:'pointer',fontFamily:tokens.fontSans,
+              display:'inline-flex',alignItems:'center',gap:5,
+            }}>
+              <Icon name={o.ic} size={12}/>{o.l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)',gap:14}}>
+        <MiniChart title="Pasos"   unit="pasos/día" data={weeks.map(w=>w.steps)} labels={weeks.map(w=>w.w)} color="#059669" type={chartType} format={v=>(v||0).toLocaleString('es')}/>
+        <MiniChart title="Agua"    unit="L/día" data={weeks.map(w=>w.water)} labels={weeks.map(w=>w.w)} color="#0ea5e9" type={chartType} format={v=>(v||0).toFixed(1)}/>
+        <MiniChart title="Peso"    unit="kg" data={weeks.map(w=>w.peso)} labels={weeks.map(w=>w.w)} color="#b45309" type={chartType} format={v=>(v||0).toFixed(1)}/>
+      </div>
+    </div>
+  );
+}
+
+// ── Historial — cuerpo poppable (lista de semanas, selecciona la semana activa) ──
+function HistorialBody({ weeks, sel, setSel }) {
+  const { tokens } = window;
+  const cap = Math.min(sel, Math.max(0, weeks.length-1));
+  return (
+    <div style={{maxHeight:440,overflowY:'auto'}}>
+      {weeks.slice().reverse().map((w, i) => {
+        const idx = weeks.length - 1 - i;
+        const on = idx===cap;
+        return (
+          <button key={idx} onClick={()=>setSel(idx)} style={{
+            width:'100%',border:0,borderTop:`1px solid ${tokens.borderDash}`,
+            background:on?tokens.brand50:'transparent',
+            padding:'10px 16px',textAlign:'left',cursor:'pointer',position:'relative',
+            display:'grid',gridTemplateColumns:'1fr auto',gap:8,alignItems:'center',fontFamily:tokens.fontSans,
+          }}
+          onMouseEnter={e=>{if(!on)e.currentTarget.style.background=tokens.surfaceAlt}}
+          onMouseLeave={e=>{if(!on)e.currentTarget.style.background='transparent'}}>
+            {on && <span style={{position:'absolute',left:0,top:8,bottom:8,width:2.5,background:tokens.brand600,borderRadius:'0 2px 2px 0'}}/>}
+            <div>
+              <div style={{fontFamily:tokens.fontMono,fontSize:10,color:on?tokens.brand700:tokens.slate400,letterSpacing:'.1em',fontWeight:600}}>{w.w} · {w.date}</div>
+              <div style={{fontSize:13,color:tokens.slate900,marginTop:2,fontWeight:500,letterSpacing:'-.005em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{(w.peso||0).toFixed(1)} kg · {(w.water||0).toFixed(1)} L</div>
+            </div>
+            <div style={{fontFamily:tokens.fontSerif,fontSize:15,fontWeight:500,color:tokens.slate900,fontVariantNumeric:'tabular-nums'}}>{w.cumpl}<small style={{fontFamily:tokens.fontMono,fontSize:9,color:tokens.slate400,marginLeft:1}}>/10</small></div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Detalle de la semana — cuerpo poppable (cumplimiento + métricas + respuestas) ──
+function RevisionDetalleBody({ week }) {
+  const { tokens, Icon } = window;
+  if (!week) return <div style={{padding:'24px',textAlign:'center',color:tokens.slate500,fontSize:13}}>Sin revisión seleccionada.</div>;
+  const cur = week;
+  return (
+    <>
+      {/* Cumplimiento */}
+      <div style={{marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+          <span style={{fontFamily:tokens.fontMono,fontSize:10,color:tokens.slate500,letterSpacing:'.12em',textTransform:'uppercase',fontWeight:600}}>Cumplimiento del plan</span>
+          <span style={{fontFamily:tokens.fontSerif,fontSize:20,fontWeight:500,color:tokens.brand700,fontVariantNumeric:'tabular-nums',letterSpacing:'-.01em'}}>{cur.cumpl}<small style={{fontFamily:tokens.fontSans,fontSize:12,color:tokens.slate500,marginLeft:3}}>/ 10</small></span>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(10,1fr)',gap:3}}>
+          {Array.from({length:10}).map((_,i)=>(
+            <div key={i} style={{height:8,borderRadius:2,background:i<cur.cumpl?tokens.brand600:tokens.slate100}}/>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics grid */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+        <MetricTile ic="chart"  lab="Pasos medios"   val={(cur.steps||0).toLocaleString('es')} u="pasos/día"/>
+        <MetricTile ic="leaf"   lab="Agua"           val={(cur.water||0).toFixed(1)} u="L/día"/>
+        <MetricTile ic="scale"  lab="Peso"           val={(cur.peso||0).toFixed(1)}  u="kg"/>
+      </div>
+
+      {/* Open answers */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <Answer label="¿Comidas fuera del plan?" val={cur.fuera||'—'} flag={(cur.fuera||'').startsWith('Sí')}/>
+        <Answer label="¿Cambiaría algo del plan?" val={cur.cambio||'—'}/>
+        <Answer label="¿Cómo te sentiste esta semana?" val={cur.sintio||'—'} span/>
+        <Answer label="Complemento / notas" val={cur.extra||'—'} span/>
+      </div>
+    </>
+  );
+}
+
+// ── Resumen de la semana seleccionada — cuerpo poppable (4 métricas) ──
+function UltimaRevisionBody({ week, weeks }) {
+  const { tokens } = window;
+  if (!week) return <div style={{padding:'24px',textAlign:'center',color:tokens.slate500,fontSize:13}}>Sin revisiones todavía.</div>;
+  const all = weeks || [];
+  const items = [
+    {l:'Cumplimiento', v:week.cumpl, u:`/ 10`, c:tokens.brand700},
+    {l:'Pasos / día',  v:(week.steps||0).toLocaleString('es'), u:'medios', c:tokens.slate900},
+    {l:'Agua',         v:(week.water||0).toFixed(1), u:'L/día', c:'#0ea5e9'},
+    {l:'Peso',         v:(week.peso||0).toFixed(1),  u:'kg', c:tokens.slate900, delta: all.length>1?`${(all[0].peso-week.peso)>=0?'−':'+'}${Math.abs(all[0].peso-week.peso).toFixed(1)} kg vs S 1`:null},
+  ];
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+      {items.map(s=>(
+        <div key={s.l} style={{background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:10,padding:'12px 14px'}}>
+          <div style={{fontFamily:tokens.fontMono,fontSize:9.5,color:tokens.slate400,letterSpacing:'.12em',textTransform:'uppercase',fontWeight:600}}>{s.l}</div>
+          <div style={{fontFamily:tokens.fontSerif,fontSize:26,fontWeight:500,color:s.c,letterSpacing:'-.02em',marginTop:4,fontVariantNumeric:'tabular-nums'}}>
+            {s.v}<small style={{fontFamily:tokens.fontSans,fontSize:11,fontWeight:500,color:tokens.slate500,marginLeft:4,letterSpacing:0}}>{s.u}</small>
+          </div>
+          {s.delta && <div style={{fontFamily:tokens.fontMono,fontSize:10,color:tokens.brand700,marginTop:2,letterSpacing:'.04em',fontWeight:600}}>{s.delta}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Add review modal ─────────────────────────────────
 function AddReviewModal({ weeks, onClose, onSave }) {
   const { tokens, Button, Label, Icon, Input } = window;
   const nextNum = weeks.length + 1;
@@ -379,4 +430,4 @@ function Answer({ label, val, span, flag }) {
   );
 }
 
-Object.assign(window, { Reviews, AddReviewModal, MiniChart, MetricTile, Answer });
+Object.assign(window, { Reviews, AddReviewModal, MiniChart, MetricTile, Answer, UltimaRevisionBody, EvolucionBody, HistorialBody, RevisionDetalleBody });
