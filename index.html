@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>DaniNutrición — Frontend</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html,body,#app{height:100%}
+    body{margin:0;background:#f6f7f5;font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#0f172a;-webkit-font-smoothing:antialiased;transition:background .2s, color .2s}
+    body[data-theme="dark"]{background:#0c100e;color:#edf0ee}
+    *{box-sizing:border-box}
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-thumb{background:#e2e5e0;border-radius:999px;border:2px solid #f6f7f5}
+    ::-webkit-scrollbar-track{background:transparent}
+    body[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#2a302b;border-color:#0c100e}
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    input[type=number]{-moz-appearance:textfield}
+    body[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.85)}
+
+    /* Chart horizontal scrollbar — matches the active theme */
+    .chart-scroll{scrollbar-width:thin;scrollbar-color:#cbd2c6 transparent}
+    .chart-scroll::-webkit-scrollbar{height:9px}
+    .chart-scroll::-webkit-scrollbar-track{background:transparent}
+    .chart-scroll::-webkit-scrollbar-thumb{background:#cbd2c6;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+    .chart-scroll::-webkit-scrollbar-thumb:hover{background:#059669;background-clip:padding-box}
+    body[data-theme="dark"] .chart-scroll{scrollbar-color:#333b35 transparent}
+    body[data-theme="dark"] .chart-scroll::-webkit-scrollbar-thumb{background:#333b35;background-clip:padding-box}
+    body[data-theme="dark"] .chart-scroll::-webkit-scrollbar-thumb:hover{background:#34d399;background-clip:padding-box}
+
+    /* PDF document sheets */
+    .pdf-page{width:794px;max-width:100%;min-height:1040px;background:#fff;color:#1a1d1a;
+      padding:52px 56px;box-sizing:border-box;box-shadow:0 4px 24px rgba(15,23,42,.12),0 1px 3px rgba(15,23,42,.08);
+      border:1px solid #e6e8e4;border-radius:3px;font-family:'Inter',sans-serif}
+
+    @media print{
+      @page{size:A4;margin:13mm}
+      html,body{background:#fff !important}
+      body *{visibility:hidden !important}
+      #pdf-doc,#pdf-doc *{visibility:visible !important}
+      #pdf-doc{position:absolute;left:0;top:0;width:100%;gap:0 !important}
+      .pdf-toolbar{display:none !important}
+      .pdf-page{box-shadow:none !important;border:0 !important;border-radius:0 !important;
+        width:100% !important;min-height:auto !important;padding:0 !important;margin:0 !important;
+        page-break-after:always;break-after:page}
+      .pdf-page:last-child{page-break-after:auto;break-after:auto}
+    }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel" src="ui_kits/web/Primitives.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/Sidebar.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/Header.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/MealSlot.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/Screens.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/Reviews.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/PdfPlan.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/MealsRecipes.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/MealsIngredients.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/MealsExtras.jsx"></script>
+  <script type="text/babel" src="ui_kits/web/MealsShell.jsx"></script>
+
+  <script type="text/babel">
+    // Initial client data — new structure: each meal = SLOT with options[]
+    // Each option has its own ingredient list ({name, qty}) and macros.
+    const initialClients = [
+      {
+        id:1, full_name:'Ariel', objective:'Pérdida de grasa', streak:30,
+        birth_date:'1993-06-12', sex:'M', height:175, weight:80.2, activity:'Moderada', goal_weight:74,
+        since:'mar. 2026',
+        reviews:genSampleReviews(),
+        notes:'Hipotiroidismo controlado (Eutirox 50mcg). Ciclo menstrual irregular.',
+        allergies:['Lactosa','Frutos secos','Marisco'],
+        targets:{ kcal:2200, pPerKg:1.8, fPerKg:0.8, p:144, c:262, f:64 },
+        meals: [
+          { id:1, icon:'coffee', title:'Desayuno', time:'08:30',
+            options:[
+              { id:1, label:'Principal', kcal:520, p:28, c:62, f:14.5,
+                items:[
+                  {name:'Avena',         qty:'60g'},
+                  {name:'Yogur griego',  qty:'150g'},
+                  {name:'Plátano',       qty:'1 ud'},
+                  {name:'Nueces',        qty:'15g'},
+                ] },
+              { id:2, label:'Opción A · entreno mañana', kcal:540, p:35, c:65, f:11,
+                items:[
+                  {name:'Tortitas de avena', qty:'80g'},
+                  {name:'Clara de huevo',    qty:'200g'},
+                  {name:'Frutos rojos',      qty:'80g'},
+                ] },
+            ] },
+          { id:2, icon:'sun', title:'Media mañana', time:'11:00',
+            options:[
+              { id:1, label:'Principal', kcal:260, p:12, c:34, f:8,
+                items:[{name:'Manzana',qty:'1 ud'},{name:'Queso fresco',qty:'80g'}] },
+            ] },
+          { id:3, icon:'utensils', title:'Comida', time:'14:00',
+            options:[
+              { id:1, label:'Principal', kcal:780, p:55, c:78, f:22,
+                items:[
+                  {name:'Pollo pechuga',  qty:'180g'},
+                  {name:'Arroz integral', qty:'80g'},
+                  {name:'Brócoli',        qty:'150g'},
+                  {name:'Aceite oliva',   qty:'10ml'},
+                ] },
+              { id:2, label:'Opción A · vegetariana', kcal:760, p:42, c:90, f:24,
+                items:[
+                  {name:'Tofu firme',     qty:'200g'},
+                  {name:'Quinoa',         qty:'90g'},
+                  {name:'Pimiento rojo',  qty:'1 ud'},
+                  {name:'Aceite oliva',   qty:'10ml'},
+                ] },
+              { id:3, label:'Opción B · fuera de casa', kcal:800, p:50, c:80, f:26,
+                items:[
+                  {name:'Bowl de pollo y arroz', qty:'1 ración'},
+                  {name:'Ensalada verde',         qty:'1 ración'},
+                ] },
+            ] },
+          { id:4, icon:'cookie', title:'Merienda', time:'17:30',
+            options:[
+              { id:1, label:'Principal', kcal:230, p:14, c:28, f:6,
+                items:[{name:'Tostada integral',qty:'2 reb.'},{name:'Pavo',qty:'40g'},{name:'Tomate',qty:'1 ud'}] },
+            ] },
+          { id:5, icon:'moon', title:'Cena', time:'21:00',
+            options:[
+              { id:1, label:'Principal', kcal:560, p:41, c:44, f:18,
+                items:[{name:'Merluza',qty:'200g'},{name:'Patata asada',qty:'200g'},{name:'Ensalada mixta',qty:'1 ración'}] },
+              { id:2, label:'Opción A · ligera', kcal:380, p:38, c:18, f:14,
+                items:[{name:'Huevo',qty:'2 ud'},{name:'Calabacín',qty:'200g'},{name:'Aguacate',qty:'1/2 ud'}] },
+            ] },
+        ],
+      },
+    ];
+
+    function genSampleReviews(){
+      return Array.from({length:32}).map((_,i)=>({
+        w:`S ${i+1}`,
+        date:['11 mar','18 mar','25 mar','01 abr','08 abr','15 abr','22 abr'][i%7],
+        cumpl: 6 + ((i*3)%4),
+        steps: 7200 + (i*110) + ((i*53)%900),
+        water: +(1.8 + (i*0.03) + ((i%4)*0.05)).toFixed(1),
+        peso:  +(82.4 - i*0.09 - ((i%3)*0.03)).toFixed(1),
+        sintio: ['Con bajones de energía','Estable y enfocada','Energía estable','Cansancio días de pesas','Muy bien, fuerte en entrenos','Excelente, mejor descanso'][i%6],
+        fuera: (i%4===0)?'Sí · cena fin de semana':'No',
+        cambio:['Más carbos en entrenos','Todo bien','Variar más las cenas','Más proteína en comida'][i%4],
+        extra: (i%5===0)?'Probaré HIIT':'—',
+      }));
+    }
+
+    function newClient(id, name) {
+      return {
+        id, full_name:name, objective:'Sin objetivo definido', streak:0,
+        birth_date:'', sex:'M', height:170, weight:70, activity:'Moderada', goal_weight:'',
+        since:new Date().toLocaleDateString('es-ES',{month:'short',year:'numeric'}),
+        notes:'', allergies:[],
+        targets:{ kcal:2000, pPerKg:1.8, fPerKg:0.8, p:126, c:248, f:56 },
+        reviews:[],
+        meals:[
+          { id:1, icon:'coffee',   title:'Desayuno', time:'08:30', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+          { id:2, icon:'utensils', title:'Comida',   time:'14:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+          { id:3, icon:'moon',     title:'Cena',     time:'21:00', options:[{id:1, label:'Principal', kcal:0,p:0,c:0,f:0, items:[]}] },
+        ],
+      };
+    }
+
+    function App() {
+      const [clients, setClients] = React.useState(initialClients);
+      const [active, setActive] = React.useState(1);
+      const [filter, setFilter] = React.useState('');
+      const [tab, setTab] = React.useState('plan');
+      const [theme, setThemeState] = React.useState('light');
+      const [dirty, setDirty] = React.useState(false);
+      const [addOpen, setAddOpen] = React.useState(false);
+      const [comidasOpen, setComidasOpen] = React.useState(false);
+
+      window.setTheme && window.setTheme(theme);
+      React.useEffect(() => { document.body.setAttribute('data-theme', theme); }, [theme]);
+
+      const client = clients.find(c=>c.id===active) || clients[0];
+      const clientFull = client ? { ...client, meta: client.objective || 'Sin objetivo definido' } : null;
+
+      const updateClient = (id, patch) => {
+        setClients(cs => cs.map(c => c.id===id ? { ...c, ...patch } : c));
+        setDirty(true);
+      };
+
+      const addClient = (name) => {
+        const id = Math.max(0, ...clients.map(c=>c.id)) + 1;
+        const nc = newClient(id, name.trim());
+        setClients(cs => [...cs, nc]);
+        setActive(id);
+        setDirty(true);
+      };
+
+      const removeClient = (id) => {
+        if (clients.length <= 1) { alert('Debe haber al menos un asesorado.'); return; }
+        const c = clients.find(x=>x.id===id);
+        if (!c) return;
+        if (!confirm(`¿Eliminar a ${c.full_name}? Se perderán todos sus datos.`)) return;
+        const rest = clients.filter(x=>x.id!==id);
+        setClients(rest);
+        if (active===id) setActive(rest[0].id);
+        setDirty(true);
+      };
+
+      const save = () => setDirty(false);
+
+      const tabs = [
+        { id:'ficha', label:'Ficha', icon:'user' },
+        { id:'plan', label:'Plan nutricional', icon:'utensils', badge: tab==='plan' && dirty ? 'editando' : null },
+        { id:'rev', label:'Revisiones', icon:'clipboard' },
+        { id:'pdf', label:'PDF', icon:'file' },
+      ];
+
+      return (
+        <div style={{display:'flex',height:'100vh',overflow:'hidden',background:window.tokens.bgApp,color:window.tokens.slate900,position:'relative'}}>
+          <Sidebar
+            clients={clients} activeId={active} onSelect={setActive}
+            filter={filter} onFilter={setFilter}
+            onAdd={()=>setAddOpen(true)}
+            onRemove={removeClient}
+            onGoFoods={()=>setComidasOpen(true)}
+            theme={theme}
+            onToggleTheme={()=>setThemeState(t=>t==='dark'?'light':'dark')}/>
+          <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,background:window.tokens.bgApp,position:'relative'}}>
+            {clientFull && <Header client={clientFull} tabs={tabs} active={tab} onSelect={setTab} hasUnsaved={dirty} onSave={save}/>}
+            <main style={{flex:1,overflow:'auto',padding:'20px 26px 40px',display:'flex'}}>
+              <div style={{maxWidth:1180,width:'100%',margin:'0 auto',minHeight:0,display:'flex',flexDirection:'column',flex:1}}>
+                {client && tab==='ficha' && <PatientForm client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
+                {client && tab==='plan'  && <NutritionPlan client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
+                {client && tab==='rev'   && <Reviews client={client} onUpdate={patch=>updateClient(client.id, patch)}/>}
+                {client && tab==='pdf'   && <PdfPlan client={client}/>}
+              </div>
+            </main>
+            {comidasOpen && <ComidasWindow onClose={()=>setComidasOpen(false)}/>}
+          </div>
+          {addOpen && <AddClientModal onClose={()=>setAddOpen(false)} onCreate={name=>{addClient(name);setAddOpen(false);}}/>}
+        </div>
+      );
+    }
+
+    function AddClientModal({ onClose, onCreate }) {
+      const { tokens, Button, Label, Icon } = window;
+      const [name, setName] = React.useState('');
+      const inputRef = React.useRef();
+      React.useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
+      const submit = () => { if (name.trim()) onCreate(name); };
+      return (
+        <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,backdropFilter:'blur(2px)'}}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            width:420,background:tokens.surface,border:`1px solid ${tokens.borderSoft}`,borderRadius:14,
+            boxShadow:'0 20px 50px rgba(0,0,0,.25)',padding:'20px 22px',display:'flex',flexDirection:'column',gap:12
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:36,height:36,borderRadius:10,background:tokens.brand50,color:tokens.brand700,display:'flex',alignItems:'center',justifyContent:'center',border:`1px solid ${tokens.brand100}`}}>
+                <Icon name="user" size={16}/>
+              </div>
+              <div>
+                <div style={{fontFamily:tokens.fontSerif,fontSize:18,fontWeight:500,letterSpacing:'-.01em',color:tokens.slate900,lineHeight:1.1}}>Nuevo asesorado</div>
+                <div style={{fontSize:12.5,color:tokens.slate500,marginTop:2}}>Crea una ficha desde cero</div>
+              </div>
+            </div>
+            <div style={{marginTop:4}}>
+              <Label required>Nombre completo</Label>
+              <input ref={inputRef} value={name} onChange={e=>setName(e.target.value)} placeholder="Ej.: María García"
+                onKeyDown={e=>{if(e.key==='Enter')submit(); if(e.key==='Escape')onClose();}}
+                style={{height:38,width:'100%',boxSizing:'border-box',border:`1px solid ${tokens.brand600}`,
+                  background:tokens.surface,borderRadius:8,padding:'0 12px',fontSize:14,
+                  fontFamily:tokens.fontSans,color:tokens.slate900,
+                  boxShadow:`0 0 0 3px rgba(16,185,129,.18)`,outline:'none'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:6}}>
+              <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+              <Button variant="primary" icon="plus" onClick={submit} disabled={!name.trim()}>Crear asesorado</Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Floating Comidas Window ──────────────────────────────
+    function ComidasWindow({ onClose }) {
+      const { tokens, Icon } = window;
+      const initial = React.useMemo(() => {
+        const maxW = Math.min(940, window.innerWidth - 360);
+        const w = Math.max(680, maxW);
+        const h = Math.min(760, window.innerHeight - 80);
+        return {
+          x: Math.max(32, window.innerWidth - w - 36),
+          y: 64,
+          w, h,
+        };
+      }, []);
+      const [pos, setPos] = React.useState({x: initial.x, y: initial.y});
+      const [size, setSize] = React.useState({w: initial.w, h: initial.h});
+      const [maximized, setMaximized] = React.useState(false);
+      const [prev, setPrev] = React.useState(null);
+      const [open, setOpen] = React.useState(false);
+      const [dragging, setDragging] = React.useState(false);
+      const [origin, setOrigin] = React.useState('50% 50%');
+
+      // Compute origin from the Comidas trigger button position
+      const updateOrigin = React.useCallback((curPos) => {
+        const t = document.querySelector('[data-comidas-trigger]');
+        if (!t) return;
+        const r = t.getBoundingClientRect();
+        const cx = r.left + r.width/2;
+        const cy = r.top + r.height/2;
+        setOrigin(`${cx - curPos.x}px ${cy - curPos.y}px`);
+      }, []);
+
+      React.useEffect(() => {
+        updateOrigin(pos);
+        // double rAF so initial scale(0) renders before we transition to scale(1)
+        requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
+        // close on Escape
+        const onKey = (e) => { if (e.key === 'Escape') handleClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+        // eslint-disable-next-line
+      }, []);
+
+      const handleClose = () => {
+        updateOrigin(pos);
+        setOpen(false);
+        setTimeout(onClose, 260);
+      };
+
+      const startDrag = (e) => {
+        if (maximized) return;
+        e.preventDefault();
+        setDragging(true);
+        const sx = e.clientX, sy = e.clientY;
+        const px = pos.x, py = pos.y;
+        const move = (ev) => setPos({
+          x: Math.max(8, Math.min(window.innerWidth - size.w - 8, px + (ev.clientX - sx))),
+          y: Math.max(8, Math.min(window.innerHeight - 60, py + (ev.clientY - sy))),
+        });
+        const up = () => {
+          setDragging(false);
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      };
+
+      const startResize = (e) => {
+        if (maximized) return;
+        e.preventDefault(); e.stopPropagation();
+        setDragging(true);
+        const sx = e.clientX, sy = e.clientY;
+        const sw = size.w, sh = size.h;
+        const move = (ev) => setSize({
+          w: Math.max(380, Math.min(window.innerWidth - pos.x - 16, sw + (ev.clientX - sx))),
+          h: Math.max(320, Math.min(window.innerHeight - pos.y - 16, sh + (ev.clientY - sy))),
+        });
+        const up = () => {
+          setDragging(false);
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      };
+
+      const toggleMax = () => {
+        if (maximized) {
+          if (prev) { setPos({x:prev.x,y:prev.y}); setSize({w:prev.w,h:prev.h}); }
+          setMaximized(false);
+        } else {
+          setPrev({...pos, ...size});
+          setPos({x:24, y:24}); setSize({w:window.innerWidth - 48, h:window.innerHeight - 48});
+          setMaximized(true);
+        }
+      };
+
+      const animTransition = dragging
+        ? 'none'
+        : 'transform .28s cubic-bezier(.34,1.05,.5,1), opacity .22s ease, left .2s ease, top .2s ease, width .2s ease, height .2s ease';
+
+      return (
+        <div style={{
+          position:'fixed',
+          left:pos.x, top:pos.y, width:size.w, height:size.h,
+          background:tokens.surface, border:`1px solid ${tokens.borderSoft}`, borderRadius:12,
+          boxShadow:'0 24px 60px rgba(15,23,42,.28), 0 4px 12px rgba(15,23,42,.12)',
+          display:'flex', flexDirection:'column',
+          zIndex:60, overflow:'hidden',
+          transformOrigin: origin,
+          transform: open ? 'scale(1)' : 'scale(.04)',
+          opacity: open ? 1 : 0,
+          transition: animTransition,
+          willChange: 'transform, opacity',
+        }}>
+          {/* Title bar — draggable */}
+          <div onMouseDown={startDrag} onDoubleClick={toggleMax}
+            style={{
+              height:42, flexShrink:0, display:'flex', alignItems:'center', gap:10,
+              padding:'0 8px 0 14px',
+              background:`linear-gradient(180deg, ${tokens.surfaceAlt}, ${tokens.surface})`,
+              borderBottom:`1px solid ${tokens.borderSoft}`,
+              cursor: maximized ? 'default' : 'move',
+              userSelect:'none',
+          }}>
+            <div style={{width:24,height:24,borderRadius:6,background:tokens.brand50,color:tokens.brand700,
+              display:'inline-flex',alignItems:'center',justifyContent:'center',border:`1px solid ${tokens.brand100}`}}>
+              <Icon name="chefHat" size={13}/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:tokens.fontSerif,fontSize:14,fontWeight:500,color:tokens.slate900,letterSpacing:'-.005em',lineHeight:1}}>Comidas</div>
+              <div style={{fontFamily:tokens.fontMono,fontSize:9,color:tokens.slate400,letterSpacing:'.12em',textTransform:'uppercase',marginTop:2,fontWeight:600}}>Biblioteca · arrastra al plan</div>
+            </div>
+            <button onClick={toggleMax} title={maximized?'Restaurar':'Maximizar'}
+              style={{width:26,height:26,border:`1px solid ${tokens.borderSoft}`,background:tokens.surface,color:tokens.slate500,
+                borderRadius:6,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+              onMouseEnter={e=>e.currentTarget.style.color=tokens.slate900}
+              onMouseLeave={e=>e.currentTarget.style.color=tokens.slate500}>
+              <Icon name={maximized?'minimize':'maximize'} size={11}/>
+            </button>
+            <button onClick={handleClose} title="Cerrar"
+              style={{width:26,height:26,border:`1px solid ${tokens.borderSoft}`,background:tokens.surface,color:tokens.slate500,
+                borderRadius:6,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+              onMouseEnter={e=>{e.currentTarget.style.color=tokens.red600;e.currentTarget.style.borderColor=tokens.rose200;}}
+              onMouseLeave={e=>{e.currentTarget.style.color=tokens.slate500;e.currentTarget.style.borderColor=tokens.borderSoft;}}>
+              <Icon name="x" size={12}/>
+            </button>
+          </div>
+          {/* Body */}
+          <div style={{flex:1, minHeight:0, overflow:'hidden', padding:'14px 16px', display:'flex', flexDirection:'column', background:tokens.bgApp}}>
+            <MealsShell/>
+          </div>
+          {/* Resize handle */}
+          {!maximized && (
+            <div onMouseDown={startResize}
+              title="Redimensionar"
+              style={{
+                position:'absolute', right:0, bottom:0, width:18, height:18,
+                cursor:'nwse-resize', display:'flex', alignItems:'flex-end', justifyContent:'flex-end', padding:3,
+              }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" style={{color: tokens.slate400}}>
+                <path d="M11 4L4 11M11 7L7 11M11 10L10 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+              </svg>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+  </script>
+</body>
+</html>

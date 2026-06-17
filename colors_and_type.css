@@ -1,0 +1,193 @@
+/* ============================================================
+   DaniNutrición — Design Tokens
+   Colors + Typography
+   ============================================================ */
+
+:root {
+  /* ---------- BRAND COLORS ---------- */
+  /* Primary: Emerald green (Tailwind emerald family) */
+  --brand-500: #10b981;      /* emerald-500 — logo gradient start */
+  --brand-600: #059669;      /* emerald-600 — primary actions, accents */
+  --brand-700: #047857;      /* emerald-700 — hover state on primary */
+  --brand-800: #065f46;      /* emerald-800 — active sidebar text */
+  --brand-teal-600: #0d9488; /* teal-600 — logo gradient end */
+
+  /* Brand tints (backgrounds / subtle surfaces) */
+  --brand-50:  #ecfdf5;      /* emerald-50 — active sidebar bg, soft highlight */
+  --brand-100: #d1fae5;      /* emerald-100 — badge / chip bg */
+  --brand-200: #a7f3d0;      /* emerald-200 — badge border */
+
+  /* ---------- NEUTRALS (slate) ---------- */
+  --slate-50:  #f8fafc;      /* app background */
+  --slate-100: #f1f5f9;      /* subtle surface / progress track */
+  --slate-200: #e2e8f0;      /* default border */
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;      /* placeholder icons */
+  --slate-500: #64748b;      /* muted text */
+  --slate-600: #475569;      /* secondary text */
+  --slate-700: #334155;      /* body text */
+  --slate-900: #0f172a;      /* headings / strong text */
+
+  --white: #ffffff;
+
+  /* ---------- SEMANTIC MACRO COLORS ---------- */
+  --macro-protein:  #e11d48; /* rose-600 — protein */
+  --macro-protein-bg: #fff1f2;
+  --macro-protein-border: #fecdd3;
+  --macro-protein-fg: #be123c;
+
+  --macro-carbs: #059669;    /* emerald-600 — carbs */
+  --macro-carbs-bg: #ecfdf5;
+  --macro-carbs-border: #a7f3d0;
+  --macro-carbs-fg: #047857;
+
+  --macro-fat: #d97706;      /* amber-600 — fats */
+  --macro-fat-bg: #fffbeb;
+  --macro-fat-border: #fde68a;
+  --macro-fat-fg: #b45309;
+
+  /* ---------- SEMANTIC STATUS ---------- */
+  --success: #059669;        /* emerald-600 */
+  --warning: #d97706;        /* amber-600 */
+  --danger:  #dc2626;        /* red-600 */
+  --danger-hover: #b91c1c;   /* red-700 */
+  --danger-bg: #fef2f2;      /* red-50 */
+  --info:    #0ea5e9;        /* sky-500 */
+  --locked:  #d97706;        /* amber-600 (lock icon) */
+
+  /* ---------- SURFACE / SEMANTIC ROLES ---------- */
+  --bg-app:         var(--slate-50);
+  --bg-surface:     var(--white);
+  --bg-subtle:      var(--slate-50);
+  --bg-input:       #f3f3f5;
+  --bg-muted:       #ececf0;
+
+  --fg-strong:      var(--slate-900);
+  --fg-default:     var(--slate-700);
+  --fg-muted:       var(--slate-500);
+  --fg-placeholder: var(--slate-400);
+  --fg-on-brand:    var(--white);
+
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-subtle:  var(--slate-200);
+  --ring:           rgba(16, 185, 129, 0.35);
+
+  /* ---------- TYPOGRAPHY ---------- */
+  /* The app uses the browser/OS default sans-serif stack.
+     We pin it to a friendly system stack; Inter is close if you want a webfont. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, "Noto Sans",
+               sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+               Consolas, "Liberation Mono", monospace;
+
+  /* Base size + weights */
+  --font-size-base: 16px;
+  --fw-normal: 400;   /* @kind font */
+  --fw-medium: 500;   /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold: 700;     /* @kind font */
+
+  /* Type scale (Tailwind-aligned) */
+  --text-xs:   12px;   /* meta, tiny labels */
+  --text-sm:   14px;   /* secondary body */
+  --text-base: 16px;   /* body */
+  --text-lg:   18px;   /* h3 */
+  --text-xl:   20px;   /* h2 */
+  --text-2xl:  24px;   /* h1 / page title */
+  --text-3xl:  30px;   /* display numeric (TDEE kcal) */
+
+  /* Line heights */
+  --lh-tight:   1.2;  /* @kind font */
+  --lh-snug:    1.35; /* @kind font */
+  --lh-normal:  1.5;  /* @kind font */
+
+  /* ---------- RADII ---------- */
+  --radius-sm: 6px;    /* Tailwind rounded-md derivative */
+  --radius-md: 8px;    /* inputs, buttons */
+  --radius-lg: 10px;   /* default --radius = 0.625rem */
+  --radius-xl: 12px;   /* cards */
+  --radius-2xl: 16px;  /* logo tile */
+  --radius-full: 9999px;
+
+  /* ---------- SHADOWS ---------- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 20px -4px rgba(15, 23, 42, 0.10), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+
+  /* ---------- SPACING (4px base) ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+}
+
+/* ============================================================
+   Semantic element defaults
+   ============================================================ */
+html {
+  font-size: var(--font-size-base);
+  font-family: var(--font-sans);
+  color: var(--fg-default);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  color: var(--fg-default);
+  background: var(--bg-app);
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--fg-strong);
+}
+h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  color: var(--fg-strong);
+}
+h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-normal);
+  color: var(--fg-strong);
+}
+h4 {
+  font-size: var(--text-base);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--fg-strong);
+}
+p  { font-size: var(--text-base); line-height: var(--lh-normal); }
+small, .meta { font-size: var(--text-xs); color: var(--fg-muted); }
+
+label, .label {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-strong);
+}
+
+code, kbd, samp, .tabular { font-family: var(--font-mono); font-size: 0.95em; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Eyebrow / section label — used widely in stat tiles */
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  font-weight: var(--fw-medium);
+}
